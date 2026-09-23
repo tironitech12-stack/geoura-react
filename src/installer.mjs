@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 
@@ -73,7 +72,7 @@ function mergeEnv(source, block) {
   return `${source.replace(/\s*$/, "")}\n\n${block}\n`.replace(/^\n+/, "");
 }
 
-export async function createInstallPlan({ root = process.cwd(), siteId, apiUrl = "http://127.0.0.1:4173", publicKey = `gpk_${randomBytes(18).toString("base64url")}`, send = false } = {}) {
+export async function createInstallPlan({ root = process.cwd(), siteId, apiUrl = "http://127.0.0.1:4173", publicKey = "", send = false } = {}) {
   const project = await detectProject(root);
   if (project.framework === "unknown") throw new Error("Projeto React, Next.js ou Vite não identificado.");
   if (!project.entry) throw new Error(`Entrypoint do projeto ${project.framework} não encontrado.`);
@@ -94,8 +93,18 @@ export async function createInstallPlan({ root = process.cwd(), siteId, apiUrl =
   for(const change of changes){const current=await exists(change.path)?await read(change.path):null;if(current!==change.content)effective.push({...change,action:current===null?"create":"update"});}
   const warnings=[];
   if(!project.dependencies["@geoura/react"])warnings.push("@geoura/react não aparece nas dependências; execute npm install @geoura/react.");
+  if(!publicKey)warnings.push("Instalação local sem chave pública registrada; o envio remoto continuará indisponível.");
   if(send)warnings.push("O envio remoto foi solicitado. Confirme autenticação pública, CORS e rate limit antes da produção.");
   return {project:{framework:project.framework,entry:project.entry,root:project.root},configuration:{siteId:safeSiteId,apiUrl:safeApiUrl,publicKey,send},changes:effective,warnings};
+}
+
+export async function registerInstallation({ siteId, origin, apiUrl = "http://127.0.0.1:4173", adminToken = process.env.GEOURA_ADMIN_TOKEN, fetcher = globalThis.fetch } = {}) {
+  const safeSiteId=validSiteId(siteId),safeApiUrl=validApiUrl(apiUrl);
+  if(!adminToken)throw new Error("Defina GEOURA_ADMIN_TOKEN para registrar a instalação.");
+  const safeOrigin=new URL(origin).origin;
+  const response=await fetcher(`${safeApiUrl}/v1/installations/register`,{method:"POST",headers:{"content-type":"application/json",authorization:`Bearer ${adminToken}`},body:JSON.stringify({siteId:safeSiteId,origin:safeOrigin})});
+  const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||`A API respondeu ${response.status}.`);
+  return data;
 }
 
 async function atomicWrite(path, content) {

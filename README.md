@@ -14,11 +14,12 @@ O assistente detecta Next.js, Vite ou React, cria o provider, integra-o ao layou
 Para automação de CI ou instalação sem perguntas:
 
 ```bash
-npx geoura init --yes --site-id tironi-tech --api-url https://api.geoura.com
+GEOURA_ADMIN_TOKEN=seu-token npx geoura init --yes --site-id tironi-tech \
+  --api-url https://api.geoura.com --site-url https://www.tironitech.com --send
 npx geoura doctor
 ```
 
-Use `--dry-run` para visualizar as alterações. O envio remoto permanece desligado por padrão; `--send` só deve ser usado depois que autenticação pública, CORS e rate limit estiverem configurados na API.
+Use `--dry-run` para visualizar as alterações. O envio remoto permanece desligado por padrão. Com `--send`, o CLI registra o domínio na Suite, recebe uma chave pública vinculada à instalação e grava apenas essa chave no ambiente do frontend; o token administrativo não é persistido no projeto. Também é possível fornecer uma chave já registrada com `--public-key`.
 
 ## O que o pacote faz
 
@@ -118,6 +119,8 @@ const draft = await client.exportContentPackage(content.id, { platform: "react" 
 
 A exportação React continua sendo um rascunho com `noindex,nofollow`. Publicação no site exige uma ação separada do editor.
 
+O pacote exportado também inclui `claimLedger` e `answerBlocks`: o primeiro mantém cada afirmação ligada à sua fonte; o segundo fornece perguntas e respostas prontas para componentes visíveis. O quality gate bloqueia qualquer item marcado como suportado que não tenha uma URL HTTP(S) válida.
+
 ## Plataformas
 
 O adaptador React identifica React e Next.js, enquanto o `@geoura/sdk` oferece o mesmo contrato básico para HTML, Shopify, Tray, WordPress e integrações próprias. A avaliação classifica a página antes de aplicar critérios diferentes para home, landing, artigo, índice, produto e contato.
@@ -128,6 +131,6 @@ O adaptador React identifica React e Next.js, enquanto o `@geoura/sdk` oferece o
 npm test
 ```
 
-## Próximo passo para produção
+## Produção
 
-A API da Suite já fornece varredura, persistência histórica, Search Console, oportunidades, pesquisa, pacotes editoriais e aprovação. Antes de produção em múltiplas instâncias ainda são necessários PostgreSQL, autenticação por instalação, limites distribuídos, consentimento, fila de jobs e retenção definida.
+A API da Suite fornece varredura, grafo interno, persistência histórica local ou PostgreSQL, Search Console, oportunidades, pesquisa, pacotes editoriais, aprovação, autenticação por instalação e experimentos observacionais. Em múltiplas instâncias, o limitador em memória deve ser substituído por Redis; consentimento, retenção e uma fila de jobs continuam sendo decisões obrigatórias da implantação.

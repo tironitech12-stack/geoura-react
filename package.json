@@ -1,6 +1,6 @@
 {
   "name": "@geoura/react",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Integração GEOura para React e Next.js",
   "type": "module",
   "sideEffects": false,

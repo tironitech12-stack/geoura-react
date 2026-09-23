@@ -20,10 +20,9 @@ function structuredData(doc) {
 
 export function detectPlatform(doc = globalThis.document) {
   const generator = meta(doc, 'meta[name="generator"]').toLowerCase();
-  const html = doc.documentElement?.outerHTML?.slice(0, 200_000) || "";
-  if (globalThis.Shopify || /cdn\.shopify\.com|shopify-section/i.test(html)) return "shopify";
-  if (/tray\.com\.br|tray-cdn/i.test(html)) return "tray";
-  if (/wordpress/i.test(generator) || /wp-content|wp-json/i.test(html)) return "wordpress";
+  if (globalThis.Shopify || doc.querySelector('[id^="shopify-section"], script[src*="cdn.shopify.com"], link[href*="cdn.shopify.com"]')) return "shopify";
+  if (doc.querySelector('script[src*="tray.com.br"], script[src*="tray-cdn"], link[href*="tray-cdn"]')) return "tray";
+  if (/wordpress/i.test(generator) || doc.querySelector('link[href*="wp-content"], script[src*="wp-content"], link[rel="https://api.w.org/"]')) return "wordpress";
   if (doc.querySelector('#__next, script[src*="/_next/"]')) return "nextjs";
   if (doc.querySelector('#root, [data-reactroot]') || /react/i.test(generator)) return "react";
   return "web";
@@ -144,16 +143,26 @@ export function createGeouraAdminClient(options = {}) {
   async function request(path,payload){const response=await fetcher(`${apiBase}${path}`,{method:"POST",headers:{"content-type":"application/json",authorization:`Bearer ${adminToken}`},body:JSON.stringify({siteId,...payload})});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||`GEOura API respondeu ${response.status}.`);return data;}
   async function get(path){const response=await fetcher(`${apiBase}${path}${path.includes("?")?"&":"?"}siteId=${encodeURIComponent(siteId)}`,{headers:{authorization:`Bearer ${adminToken}`}});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||`GEOura API respondeu ${response.status}.`);return data;}
   return {
+    registerInstallation:origin=>request("/v1/installations/register",{origin}),
     crawlSite:input=>request("/v1/sites/crawl",input),
     syncSearchConsole:input=>request("/v1/growth/search-console/sync",input),
+    syncAnalytics:input=>request("/v1/growth/analytics/sync",input),
+    syncCrux:input=>request("/v1/growth/crux/sync",input),
     calculateOpportunities:input=>request("/v1/growth/opportunities",input||{}),
     runGrowthCycle:input=>request("/v1/growth/run",input),
+    enqueueGrowthCycle:input=>request("/v1/growth/jobs",input),
+    getJob:id=>get(`/v1/growth/jobs/${encodeURIComponent(id)}`),
     getGrowthStatus:()=>get("/v1/growth/status"),
+    createExperiment:input=>request("/v1/experiments",input),
+    evaluateExperiment:id=>request(`/v1/experiments/${encodeURIComponent(id)}/evaluate`,{}),
+    ingestCitationObservations:input=>request("/v1/visibility/citations/ingest",input),
+    getCitationRuns:()=>get("/v1/visibility/citations"),
     requestBrief:input=>request("/v1/content/briefs",buildBriefInput(input)),
     generateContent:input=>request("/v1/content/generate",buildContentInput(input)),
     createContentPackage:input=>request("/v1/content/packages",input),
     approveContentPackage:(id,input)=>request(`/v1/content/packages/${encodeURIComponent(id)}/approve`,input),
     rejectContentPackage:(id,input)=>request(`/v1/content/packages/${encodeURIComponent(id)}/reject`,input),
+    rollbackContentPackage:(id,input)=>request(`/v1/content/packages/${encodeURIComponent(id)}/rollback`,input),
     exportContentPackage:(id,input={})=>request(`/v1/content/packages/${encodeURIComponent(id)}/export`,input)
   };
 }
